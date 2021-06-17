@@ -1,102 +1,126 @@
 #lang racket/base
 
 (require (for-syntax racket/base)
-         (for-meta 2 racket/base))
+         ;(for-meta 2 racket/base)
+         racket/pretty)
 
-(provide (except-out (all-defined-out)
-                     stx-reverse-aux))
+(provide (except-out (all-defined-out)))
+
 
 
 ; Funciones auxiliares
-(define-syntax (define-syntax/help stx)
+#|(define-syntax (define-syntax/help stx)
    (syntax-case stx ()
       [(_ (name arg) body ...) #'(begin
                                     (define-for-syntax (name arg)
                                        body ...)
-                                    (define-syntax name name))]))
+                                    (define-syntax name name))]))|#
+
+
+(define (print-expand syntax-object [n 1])
+  (case n
+    [(1) (pretty-print (syntax->datum (expand-syntax-once syntax-object)))]
+    [else (print-expand (expand-syntax-once syntax-object) (sub1 n))]))
+
 
                      
-; syntax type
-(define-syntax/help (stx-literal? stx)
-   (syntax-case stx ()
-      [(_ x) (let ([arg (syntax->datum #'x)])
-                (not (or (null? arg) (pair? arg)))) #'#t]
-      [(_ x) #'#f]))
+; types
+(define stx-identifier? identifier?)
 
-(define-syntax/help (stx-keyword? stx)
-   #`#,(regexp-match? #rx"#:.*" (format "~a" (syntax->datum stx))))
+(define (stx-literal? stx)
+   (let ([dat (syntax->datum stx)])
+      (if (not (or (null? dat) (pair? dat)))
+         #t
+         #f)))
 
+(define (stx-keyword? stx)
+   (if (regexp-match? #rx"#:.*" (format "~a" (syntax->datum stx)))
+      #t
+      #f))
 
 
 ; Pair constructors and selectors
-(define-syntax/help (stx-pair? stx)
+(define (stx-pair? stx)
    (syntax-case stx ()
-      [(_ (a . d)) #'#t]
-      [(_ x) #'#f]))
+      [(_ . _) #t]
+      [_ #f]))
 
-(define-syntax/help (stx-null? stx)
+(define (stx-null? stx)
    (syntax-case stx ()
-      [(_ ()) #'#t]
-      [(_ x) #'#f]))
+      [() #t]
+      [_ #f]))
 
-(define-syntax/help (stx-cons stx)
+(define (stx-cons stx1 stx2)
+   #`(#,stx1 . #,stx2))
+
+(define (stx-car stx)
    (syntax-case stx ()
-      [(_ a b) #'(a . b)]))
+      [(a . b) #'a]))
 
-(define-syntax/help (stx-car stx)
+(define (stx-cdr stx)
    (syntax-case stx ()
-      [(_ (a . b)) #'a]))
+      [(a . b) #'b]))
 
-(define-syntax/help (stx-cdr stx)
+(define stx-null #'())
+
+(define (stx-list? stx)
    (syntax-case stx ()
-      [(_ (a . b)) #'b]))
+      [(rest ...) #t]
+      [_ #f]))
 
-(define-syntax/help (stx-null stx)
-   #'())
+(define (stx-list . stxs)
+   #`(#,@stxs))
 
-(define-syntax/help (stx-list? stx)
-   (syntax-case stx ()
-      [(_ (rest ...)) #'#t]
-      [(_ x) #'#f]))
-
-(define-syntax/help (stx-list stx)
-   (syntax-case stx ()
-      [(_ rest ...) #'(rest ...)]))
-
-(define-syntax/help (stx-list* stx)
-   (syntax-case stx ()
-      [(_ rest ... last) #'(rest ... . last)]))
+(define (stx-list* stx . stxs)
+   (if (null? stxs)
+      stx
+      (stx-cons stx (apply stx-list* stxs))))
 
 
 ; List operations
+(define (stx-length stx)
+   (length (syntax->datum stx)))
 
-(define-syntax/help (stx-length stx)
-   (syntax-case stx ()
-      [(_ (head rest ...)) #`#,(length (syntax->datum #'(head rest ...)))]))
 
-(define-syntax/help (stx-append stx)
-   (syntax-case stx ()
-      [(_ (rest ...) ...) #'(rest ... ...)]))
 
-(define-syntax/help (stx-reverse-aux stx)
-   (syntax-case stx ()
-      [(_ () (rest2 ...)) #'(rest2 ...)]
-      [(_ (a rest ...) (rest2 ...)) #'(stx-reverse-aux (rest ...) (a rest2 ...))]))
+(define (stx-append . stxs)
 
-(define-syntax/help (stx-reverse stx)
-   (syntax-case stx ()
-      [(_ (rest ...)) #'(stx-reverse-aux (rest ...) ())]
-      [(_ x) #'x]))
+   (define (stx-append-2 stx1 stx2)
+      (if (stx-null? stx1)
+         stx2
+         (stx-cons (stx-car stx1) (stx-append-2 (stx-cdr stx1) stx2))))
+
+   (define (stx-append-aux stx . stxs)
+      (if (null? stxs)
+         stx
+         (stx-append-2 stx (apply stx-append-aux stxs))))
+
+   (if (null? stxs)
+      stx-null
+      (apply stx-append-aux stxs)))
+
+
+
+(define (stx-reverse stx)
+
+   (define (stx-reverse-aux stx1 stx2)
+      (if (stx-null? stx2)
+         stx1
+         (stx-reverse-aux (stx-cons (stx-car stx2) stx1) (stx-cdr stx2))))
+
+   (stx-reverse-aux stx-null stx))
 
 
 ; List iteration
-(define-syntax/help (stx-map stx)
-   (syntax-case stx ()
-      [(_ macro (rest ...)) (identifier? #'macro) #'((macro rest) ...)]))
+(define (stx-map f stx)
+   (if (stx-null? stx)
+      stx-null
+      (stx-cons (f (stx-car stx)) (stx-map f (stx-cdr stx)))))
 
 
-; Flow control
-(define-syntax/help (stx-if stx)
-   (syntax-case stx ()
-      [(_ #f _ f-state) #'f-state]
-      [(_ _ t-state _) #'t-state]))
+; List searching
+(define (stx-rec-findb v stx)
+   (cond 
+      [(stx-identifier? stx) (bound-identifier=? v stx)]
+      [(stx-pair? stx) (or (stx-rec-findb v (stx-car stx)) (stx-rec-findb v (stx-cdr stx)))]
+      [else #f]))
