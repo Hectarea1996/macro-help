@@ -1,26 +1,8 @@
 #lang racket/base
 
-(require (for-syntax racket/base)
-         ;(for-meta 2 racket/base)
-         racket/pretty)
 
-(provide (except-out (all-defined-out)))
+(provide (all-defined-out))
 
-
-
-; Funciones auxiliares
-#|(define-syntax (define-syntax/help stx)
-   (syntax-case stx ()
-      [(_ (name arg) body ...) #'(begin
-                                    (define-for-syntax (name arg)
-                                       body ...)
-                                    (define-syntax name name))]))|#
-
-
-(define (print-expand syntax-object [n 1])
-  (case n
-    [(1) (pretty-print (syntax->datum (expand-syntax-once syntax-object)))]
-    [else (print-expand (expand-syntax-once syntax-object) (sub1 n))]))
 
 
 (define (stx-apply f stx-lst)
@@ -115,10 +97,11 @@
 
 
 (define (stx-partition pred stx)
-   (stx-foldr (lambda (p elem)
-                  (if (pred elem)
-                      (stx-cons (stx-cons elem (stx-car p)) (stx-cdr p))
-                      (stx-cons (stx-car p) (stx-cons elem (stx-cdr p))))) (stx-cons stx-null stx-null) stx))
+   (let ([result (stx-foldr (lambda (p elem)
+                                (if (pred elem)
+                                    (stx-cons (stx-cons elem (stx-car p)) (stx-cdr p))
+                                    (stx-cons (stx-car p) (stx-cons elem (stx-cdr p))))) (stx-cons stx-null stx-null) stx)])
+       (values (stx-car result) (stx-cdr result))))
 
 
                   
@@ -126,7 +109,7 @@
    (stx-foldr (lambda (init elem)
                   (cond 
                      [(stx-null? init) (stx-list (stx-list elem))]
-                     [(same? (stx-car (stx-car init)) elem)
+                     [(same? (key (stx-car (stx-car init))) (key elem))
                         (stx-cons (stx-cons elem (stx-car init)) (stx-cdr init))]
                      [else (stx-cons (stx-list elem) init)])) stx-null stx))
 
