@@ -145,14 +145,14 @@
 (define (stx-takef stx pred)
    (cond 
       [(stx-null? stx) stx]
-      [(pred (stx-car stx)) (stx-cons (stx-car stx) (stx-takef pred (stx-cdr stx)))]
+      [(pred (stx-car stx)) (stx-cons (stx-car stx) (stx-takef (stx-cdr stx) pred))]
       [else stx-null]))
 
 
 (define (stx-dropf stx pred)
    (cond 
       [(stx-null? stx) stx]
-      [(pred (stx-car stx)) (stx-dropf pred (stx-cdr stx))]
+      [(pred (stx-car stx)) (stx-dropf (stx-cdr stx) pred)]
       [else stx]))
 
 

@@ -256,19 +256,79 @@ objetos sintácticos.
         #:eval helper-eval
         (stx-map stx-keyword? #'(#:hola a b #:adios))
         (stx-map stx-car #'((hola adios) (a . b) (1 2 3)))
-        (stx-map stx-reverse #'((1 2 3) (a b c d) (bla ble bli blo blu))
+        (stx-map stx-reverse #'((1 2 3) (a b c d) (bla ble bli blo blu)))
     ]
 }
 
-@defproc[(stx-map [f procedure?] [stx stx-list?])
-         stx-list?]{
-    Ejecuta la función @racket[f] sobre cada uno de los elementos de @racket[stx] y devuelve una @racket[stx-list?]
-    con los resultados.
+@defproc[(stx-foldl [f procedure?] [stx-init syntax?] [stx stx-list?])
+         any/c]{
+    Ejecuta la función @racket[f] sobre @racket[stx-init] y cada uno de los elementos de @racket[stx]. En cada iteración
+    @racket[stx-init] valdrá lo que devolvió la función @racket[f] en la iteración anterior.
 
     @examples[
         #:eval helper-eval
-        (stx-map stx-keyword? #'(#:hola a b #:adios))
-        (stx-map stx-car #'((hola adios) (a . b) (1 2 3)))
-        (stx-map stx-reverse #'((1 2 3) (a b c d) (bla ble bli blo blu))
+        (stx-foldl (lambda (init stx) (stx-cons stx init)) #'() #'(a b c d))
+        (stx-foldl stx-append #'() #'((1 2 3) (a b c d) (bla ble bli blo blu)))
+    ]
+}
+
+@defproc[(stx-foldr [f procedure?] [stx-init syntax?] [stx stx-list?])
+         any/c]{
+    Como @racket[stx-foldl], pero se recorre la lista en orden contrario.
+
+    @examples[
+        #:eval helper-eval
+        (stx-foldr (lambda (init stx) (stx-cons stx init)) #'() #'(a b c d))
+        (stx-foldr stx-append #'() #'((1 2 3) (a b c d) (bla ble bli blo blu)))
+    ]
+}
+
+@section{Búsqueda en listas}
+
+@defproc[(stx-rec-findb [v stx-identifier?] [stx stx-list?])
+         boolean?]{
+    Busca recursivamente el identificador @racket[v] sobre un árbol (lista de listas). El identificador
+    buscado @racket[sol] será encontrado si se verifica @racket[(bound-identifier=? v sol)]. 
+
+    @examples[
+        #:eval helper-eval
+        (stx-rec-findb #'casa #'(bla (blo bli (((casa)) blu) ble)))
+        (stx-rec-findb #'casa #'(bla ble bli blo blu))
+    ]
+}
+
+@section{Funciones adicionales sobre listas}
+
+@defproc[(stx-takef [stx stx-list?] [pred procedure?])
+         stx-list?]{
+    Devuelve los primeros elementos de una lista que verifican @racket[pred].
+
+    @examples[
+        #:eval helper-eval
+        (stx-takef #'(bla ble 1 2 bli blo 5 blu) stx-identifier?)
+        (stx-takef #'(#:hola #:casa #:adios a b c d e #:pasa) stx-keyword?)
+    ]
+}
+
+@defproc[(stx-dropf [stx stx-list?] [pred procedure?])
+         stx-list?]{
+    Descarta los primeros elementos de una lista que verifican @racket[pred].
+
+    @examples[
+        #:eval helper-eval
+        (stx-dropf #'(bla ble 1 2 bli blo 5 blu) stx-identifier?)
+        (stx-dropf #'(#:hola #:casa #:adios a b c d e #:pasa) stx-keyword?)
+    ]
+}
+
+@defproc[(stx-splitf-at [stx stx-list?] [pred procedure?])
+         stx-list?]{
+    Devuelve los elementos @racket[(stx-takef stx)] y @racket[(stx-dropf stx)] realizando un único
+    recorrido sobre la lista.
+
+    @examples[
+        #:eval helper-eval
+        (stx-splitf-at #'(bla ble 1 2 bli blo 5 blu) stx-identifier?)
+        (stx-splitf-at #'(#:hola #:casa #:adios a b c d e #:pasa) stx-keyword?)
     ]
 }
