@@ -162,3 +162,17 @@
       [(pred (stx-car stx)) (let-values ([(tk dp) (stx-splitf-at (stx-cdr stx) pred)])
                                 (values (stx-cons (stx-car stx) tk) dp))]
       [else (values stx-null stx)]))
+
+; Generador de identificadores
+(define (genid [base "g"])
+   (datum->syntax #'here (gensym base)))
+
+(define (genids [num 1] [base "g"])
+   (if (> num 0)
+      (cons (genid base) (genids (sub1 num) base))
+      null))
+
+(define (stx-genids [num 1] [base "g"])
+   (if (> num 0)
+      (stx-cons (genid base) (stx-genids (sub1 num) base))
+      stx-null))

@@ -332,3 +332,38 @@ objetos sintácticos.
         (stx-splitf-at #'(#:hola #:casa #:adios a b c d e #:pasa) stx-keyword?)
     ]
 }
+
+@section{Generador de identificadores}
+
+@defproc[(genid [base (or string? symbol?)])
+         stx-identifier?]{
+    Genera un identificador que contiene un símbolo único.
+
+    @examples[
+        #:eval helper-eval
+        (genid)
+        (genid "hola")
+    ]
+}
+
+@defproc[(genids [num exact-nonnegative-integer?] [base (or string? symbol?)])
+         (listof stx-identifier?)]{
+    Genera una lista de identificadores que contienen un símbolo único.
+
+    @examples[
+        #:eval helper-eval
+        (genids 3)
+        (genids 4 "hola")
+    ]
+}
+
+@defproc[(stx-genids [num exact-nonnegative-integer?] [base (or string? symbol?)])
+         stx-list?]{
+    Genera una @racket[stx-list?] de identificadores que contienen un símbolo único.
+
+    @examples[
+        #:eval helper-eval
+        (stx-genids 3)
+        (stx-genids 4 "hola")
+    ]
+}
